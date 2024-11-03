@@ -1,0 +1,5 @@
+{
+    "buildCommand": "chmod a+x ./build.sh && ./build.sh",
+    "cleanUrls": true,
+    "installCommand": "dnf install -y golang"
+}
