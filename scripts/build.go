@@ -53,21 +53,17 @@ func renderAuthFailPage() {
 }
 
 func prepareFoodItems() {
-
-	// load binary blob
 	gobBytes, err := os.ReadFile("app/fooditems.bin")
 	if err != nil {
 		log.Println("> error opening food items blob:", err)
 	}
 
-	// decrypt
 	k, _ := hex.DecodeString(os.Getenv("FOOD_KEY"))
 	c, _ := aes.NewCipher(k)
 	gcm, _ := cipher.NewGCM(c)
 	nonce, ciphertext := gobBytes[:gcm.NonceSize()], gobBytes[gcm.NonceSize():]
 	decryptedData, _ := gcm.Open(nil, nonce, ciphertext, nil)
 
-	// save
 	err = os.WriteFile("app/fooditems.go", decryptedData, 0600)
 	if err != nil {
 		panic(err)

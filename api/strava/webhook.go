@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"time"
 	"yams/services/strava"
 )
 
@@ -25,55 +24,33 @@ type StravaPost struct {
 }
 
 func Webhook(w http.ResponseWriter, r *http.Request) {
-	log.Printf("> webhook: %v", time.Now())
 	switch r.Method {
-
 	case "POST":
-		// Incoming athlete activities
-		log.Printf("> webhook-post-1: %v", time.Now())
 		processWebhookPOST(w, r)
-
 	case "GET":
-		// Webhook verification with Strava
 		processWebhookGET(w, r)
 	}
 }
 
 func processWebhookPOST(w http.ResponseWriter, r *http.Request) {
-	log.Printf("> webhook-post-2: %v", time.Now())
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("read error: %v\n", err)
 	}
-	log.Printf("%v", string(body))
 
-	// unmarshal the json body into a StravaPost data type.
 	var stravaPost StravaPost
 	err = json.Unmarshal(body, &stravaPost)
 	if err != nil {
 		log.Printf("> json error: %v\n", err)
 	}
 
-	// Return 200 to strava per webhook docs
-	log.Printf("> webhook-post-3: %v", time.Now())
-	log.Printf(">>> %v", http.StatusOK)
 	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-	resp := make(map[string]string)
-	resp["message"] = "Status OK"
-	jsonResp, _ := json.Marshal(resp)
-	w.Write(jsonResp)
-	log.Printf("> webhook-post-4: %v", time.Now())
 
-	// Only process specific event types
 	if stravaPost.AspectType == "create" && stravaPost.ObjectType == "activity" {
 		strava.ProcessNewActivity(stravaPost.OwnerId, stravaPost.ObjectId)
 
 	} else if stravaPost.Updates.Authorized == "false" {
-
-		// Delete Strava user when authorization has been removed
 		strava.DeleteUser(stravaPost.OwnerId)
-		log.Printf("> webhook-post-5: %v", time.Now())
 	}
 }
 

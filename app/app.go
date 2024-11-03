@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"math/rand"
 	"strconv"
@@ -19,8 +18,7 @@ type FoodCandidate struct {
 
 func GenerateDescription(activityCals float64) string {
 
-	// First, let's filter down the food items down to just the ones that come
-	// within +/- 10 calories.
+	// Filter down the food items
 	var candidates []FoodCandidate
 	for _, item := range FoodItems {
 		if item.ServingCalories < activityCals {
@@ -29,9 +27,7 @@ func GenerateDescription(activityCals float64) string {
 				scaleLower := math.Floor(activityCals / item.ServingCalories)
 				deltaUpper := (scaleUpper * item.ServingCalories) - activityCals
 				deltaLower := activityCals - (scaleLower * item.ServingCalories)
-
-				// Let's have a smaller tolerance on the upper bound
-				if deltaUpper <= 10 || deltaLower <= 25 {
+				if deltaUpper <= upperBound || deltaLower <= lowerBound {
 					if deltaUpper <= deltaLower {
 						candidates = append(candidates,
 							FoodCandidate{
@@ -50,18 +46,14 @@ func GenerateDescription(activityCals float64) string {
 						)
 					}
 				}
-			} else if lowerBound <= item.ServingCalories && item.ServingCalories <= upperBound {
-				candidates = append(candidates, FoodCandidate{Item: item, Scale: 1, ItemCalories: int64(item.ServingCalories)})
 			}
+		} else if activityCals-lowerBound <= item.ServingCalories && item.ServingCalories <= activityCals+upperBound {
+			candidates = append(candidates, FoodCandidate{Item: item, Scale: 1, ItemCalories: int64(item.ServingCalories)})
 		}
 	}
 
 	if len(candidates) > 0 {
-
-		// From the candidates, randomly pick one
-		log.Printf("found %d candidates", len(candidates))
 		itemPick := candidates[rand.Intn(len(candidates))]
-		log.Printf("%v", itemPick)
 
 		// Construct the actual message
 		var calorieMessage string = strconv.FormatFloat(float64(itemPick.Scale)*itemPick.Item.ServingSize, 'f', -1, 64)
@@ -78,8 +70,8 @@ func GenerateDescription(activityCals float64) string {
 				if ok {
 					calorieMessage += " " + val + " of"
 				} else {
-                    calorieMessage += " " + itemPick.Item.ServingUnits + " of"
-                }
+					calorieMessage += " " + itemPick.Item.ServingUnits + " of"
+				}
 			} else {
 				calorieMessage += " " + itemPick.Item.ServingUnits + " of"
 			}

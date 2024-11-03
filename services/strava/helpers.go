@@ -102,7 +102,6 @@ func refreshUserTokens(tokens Tokens) Tokens {
 	} else {
 		log.Printf("> tokens have expired. contacting strava for latest user tokens\n")
 
-		// refresh tokens
 		params := url.Values{}
 		params.Add("client_id", os.Getenv("STRAVA_CLIENT_ID"))
 		params.Add("client_secret", os.Getenv("STRAVA_CLIENT_SECRET"))
@@ -114,16 +113,14 @@ func refreshUserTokens(tokens Tokens) Tokens {
 		}
 		defer resp.Body.Close()
 
-		// parse response from strava
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			// handle error
-		}
+		body, _ := io.ReadAll(resp.Body)
+
 		var refreshedTokens Tokens
 		err = json.Unmarshal(body, &refreshedTokens)
 		if err != nil {
 			log.Printf("> token unmarshal error: %v", err)
 		}
+
 		refreshedTokens.AthleteId = tokens.AthleteId
 		if refreshedTokens.ExpiresAt > tokens.ExpiresAt {
 			log.Printf("> tokens have been refreshed\n")
@@ -145,69 +142,49 @@ func getUserTokens(db *sql.DB, athleteId int64) Tokens {
 }
 
 func getActivity(activityId int64, tokens Tokens) Activity {
-
-	log.Print("getting user activity\n")
-
-	// Create a new HTTP request
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://www.strava.com/api/v3/activities/%v", activityId), nil)
 	if err != nil {
 		panic(err)
 	}
 
-	// Set the Authorization header
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", tokens.AccessToken))
 
-	// Send the request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		panic(err)
 	}
 	defer resp.Body.Close()
 
-	// Read the response body.
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		panic(err)
 	}
 
-	// Munge response body.
 	var activity Activity
 	_ = json.Unmarshal(body, &activity)
 	return activity
 }
 
 func modifyActivity(activity Activity, tokens Tokens) {
-	log.Printf("> modifying activity: %v for user: %v\n", activity.Id, tokens.AthleteId)
-
-	// create payload
 	payload := map[string]string{
 		"description": activity.Description,
 	}
 
-	// set the payload
 	jsonPayload, err := json.Marshal(payload)
 	if err != nil {
 		panic(err)
 	}
 
-	// Create a new HTTP request
 	url := fmt.Sprintf("https://www.strava.com/api/v3/activities/%v", activity.Id)
 	req, err := http.NewRequest("PUT", url, bytes.NewReader(jsonPayload))
 	if err != nil {
 		panic(err)
 	}
 
-	// Set the Authorization header
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", tokens.AccessToken))
 	req.Header.Set("Content-Type", "application/json")
+	resp, _ := http.DefaultClient.Do(req)
 
-	// Send the request
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Printf("> error sending put request to strava: %v", err)
-	}
-
-	// Check the response status code.
 	log.Printf("> response code: %v\n", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("unexpected response status code: %d", resp.StatusCode)
@@ -243,7 +220,6 @@ func ProcessNewActivity(athleteId int64, activityId int64) {
 	} else if activity.Calories <= 25 {
 		log.Printf("Less than 25 calories for activity %v\n", activityId)
 	} else {
-
 		calorieDescription := app.GenerateDescription(activity.Calories)
 		if activity.Description != "" {
 			activity.Description = strings.TrimRight(activity.Description, " ") + "\n" + calorieDescription
@@ -251,10 +227,8 @@ func ProcessNewActivity(athleteId int64, activityId int64) {
 			activity.Description = calorieDescription
 		}
 
-		// Update Strava activity
 		modifyActivity(activity, tokens)
 		tDelta := time.Now().UnixMilli() - tStartMs
-
 		log.Printf("> finished adding description for %v, activity: %v in %v ms\n", athleteId, activityId, tDelta)
 	}
 

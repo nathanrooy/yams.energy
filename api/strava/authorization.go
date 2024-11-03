@@ -23,8 +23,6 @@ type StravaResponse struct {
 }
 
 func getTokensFromCode(code string) StravaResponse {
-
-	// get user tokens from strava
 	params := url.Values{}
 	params.Add("client_id", os.Getenv("STRAVA_CLIENT_ID"))
 	params.Add("client_secret", os.Getenv("STRAVA_CLIENT_SECRET"))
@@ -36,24 +34,22 @@ func getTokensFromCode(code string) StravaResponse {
 	}
 	defer resp.Body.Close()
 
-	// parse response from strava
 	body, err := io.ReadAll(resp.Body)
 	log.Printf("> body: %v", string(body))
 	if err != nil {
-		// handle error
 		log.Println("failed to parse strava response")
 	}
+
 	var stravaResponse StravaResponse
 	err = json.Unmarshal(body, &stravaResponse)
 	if err != nil {
-		// handle error
 		log.Println("unmarshal strava response error")
 	}
+
 	return stravaResponse
 }
 
 func Authorization(w http.ResponseWriter, r *http.Request) {
-	log.Println("authorizing new strava user...")
 	if r.Method == "GET" {
 		if r.URL.Query().Get("error") == "access_denied" {
 			log.Printf("access denied")
